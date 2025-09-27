@@ -6,11 +6,15 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  Alert, 
+  Alert,
 } from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
+import { useProducts } from "../context/ProductContext"; // ✅ use hook instead
+import { v4 as uuidv4 } from "uuid"; // make sure you installed uuid:  npm install uuid @types/uuid
 
 export default function AddProductScreen() {
+  const { addProduct } = useProducts(); // ✅ get addProduct from context
+
   const [image, setImage] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -31,18 +35,34 @@ export default function AddProductScreen() {
   };
 
   const handleSave = () => {
-    console.log({
+    if (!name || !quantity) {
+      Alert.alert("Error", "Please enter at least a name and quantity.");
+      return;
+    }
+
+    const newProduct = {
+      id: uuidv4(),
       name,
       price,
-      quantity,
+      quantity: Number(quantity),
       date,
       supplier,
       description,
       image,
-    });
+    };
 
-    // ✅ Fixed alert
+    addProduct(newProduct); // ✅ add to context
+
     Alert.alert("Success", "Product Saved!");
+
+    // ✅ Reset form fields after save
+    setImage(null);
+    setName("");
+    setPrice("");
+    setQuantity("");
+    setDate("");
+    setSupplier("");
+    setDescription("");
   };
 
   return (
