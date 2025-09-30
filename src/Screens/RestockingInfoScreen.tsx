@@ -1,17 +1,16 @@
+
 import React from "react";
 import { View, Text, StyleSheet, FlatList } from "react-native";
-
-// Example inventory data (you can fetch this from context, API, or props)
-const inventoryData = [
-  { id: "1", name: "Pencils", quantity: 5, threshold: 10, lastRestock: "2025-09-20", staff: "Staff #2" },
-  { id: "2", name: "Notebooks", quantity: 20, threshold: 15, lastRestock: "2025-09-22", staff: "Staff #3" },
-  { id: "3", name: "Erasers", quantity: 3, threshold: 5, lastRestock: "2025-09-18", staff: "Staff #1" },
-];
-
-// Filter low stock items
-const lowStockItems = inventoryData.filter(item => item.quantity < item.threshold);
+import { useProducts } from "../context/ProductContext"; 
 
 const RestockingInfoScreen = () => {
+  const { products } = useProducts();
+
+
+  const lowStockItems = products.filter(
+    (item) => item.quantity < (item.threshold ?? 10)
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Restocking Info</Text>
@@ -26,10 +25,11 @@ const RestockingInfoScreen = () => {
             <View style={styles.card}>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text>Current Stock: {item.quantity}</Text>
-              <Text>Threshold: {item.threshold}</Text>
-              <Text>⚠️ Needs Restock: {item.threshold - item.quantity} units</Text>
-              <Text>Last Restock Date: {item.lastRestock}</Text>
-              <Text>Restocked By: {item.staff}</Text>
+              <Text>Threshold: {item.threshold ?? 10}</Text>
+              <Text>
+                ⚠️ Needs Restock: {(item.threshold ?? 10) - item.quantity} units
+              </Text>
+              <Text>Last Restock Date: {item.date ?? "N/A"}</Text>
             </View>
           )}
         />

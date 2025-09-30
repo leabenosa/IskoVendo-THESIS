@@ -6,22 +6,27 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  Alert,
 } from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
-import { useProducts } from "../context/ProductContext"; // ✅ use hook instead
-import { v4 as uuidv4 } from "uuid"; // make sure you installed uuid:  npm install uuid @types/uuid
+import { useProducts } from "../context/ProductContext";
+import uuid from "react-native-uuid";
+import CustomAlert from "../components/CustomAlert";
+
+
 
 export default function AddProductScreen() {
-  const { addProduct } = useProducts(); // ✅ get addProduct from context
+  const { addProduct } = useProducts();
 
   const [image, setImage] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [date, setDate] = useState("");
-  const [supplier, setSupplier] = useState("");
-  const [description, setDescription] = useState("");
+
+
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState<"error" | "success">("success");
+  const [alertMessage, setAlertMessage] = useState("");
 
   const pickImage = async () => {
     const result = await launchImageLibrary({
@@ -36,33 +41,34 @@ export default function AddProductScreen() {
 
   const handleSave = () => {
     if (!name || !quantity) {
-      Alert.alert("Error", "Please enter at least a name and quantity.");
+      setAlertType("error");
+      setAlertMessage("Please enter at least a name and quantity.");
+      setShowAlert(true);
       return;
     }
 
-    const newProduct = {
-      id: uuidv4(),
-      name,
-      price,
-      quantity: Number(quantity),
-      date,
-      supplier,
-      description,
-      image,
-    };
+   const newProduct = {
+  id: uuid.v4().toString(),
+  name,
+  price: Number(price) || 0,
+  quantity: Number(quantity) || 0,
+  date,
+  image,
+};
 
-    addProduct(newProduct); // ✅ add to context
 
-    Alert.alert("Success", "Product Saved!");
+    addProduct(newProduct);
 
-    // ✅ Reset form fields after save
+    setAlertType("success");
+    setAlertMessage("Product Saved!");
+    setShowAlert(true);
+
+    // reset fields
     setImage(null);
     setName("");
     setPrice("");
     setQuantity("");
     setDate("");
-    setSupplier("");
-    setDescription("");
   };
 
   return (
@@ -99,28 +105,28 @@ export default function AddProductScreen() {
       />
       <TextInput
         style={styles.input}
-        placeholder="Date (e.g., 2025-09-25)"
+        placeholder="Date (e.g., 09-25-2025)"
         value={date}
         onChangeText={setDate}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Supplier"
-        value={supplier}
-        onChangeText={setSupplier}
-      />
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Description"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-      />
 
-      {/* Save Button */}
+     
       <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
         <Text style={styles.saveText}>✔ SAVE PRODUCT</Text>
       </TouchableOpacity>
+
+      
+     <CustomAlert
+  visible={showAlert}
+  title={alertType === "error" ? "Error" : "Success"}
+  message={alertMessage}
+  confirmText="OK"
+  confirmButtonColor={alertType === "error" ? "#ee0b0bff" : "#740c0cff"}
+  onConfirm={() => setShowAlert(false)}
+  onRequestClose={() => setShowAlert(false)}
+/>
+
+
     </ScrollView>
   );
 }
@@ -162,12 +168,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#fafafa",
   },
-  textArea: {
-    height: 100,
-    textAlignVertical: "top",
-  },
   saveBtn: {
-    backgroundColor: "#6a1b9a",
+    backgroundColor: "#851c15ff",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
@@ -178,4 +180,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 18,
   },
+  alertContainer: {
+  width: 320,
+  paddingHorizontal: 2,
+  paddingVertical: 5,
+  borderRadius: 10,
+},
+alertTitle: {
+  fontSize: 20,
+  fontWeight: "bold",
+  textAlign: "center",
+},
+alertMessage: {
+  fontSize: 16,
+  textAlign: "center",
+  marginTop: 0,
+},
 });
