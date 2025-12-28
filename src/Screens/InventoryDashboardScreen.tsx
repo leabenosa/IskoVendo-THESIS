@@ -1,9 +1,56 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, Image } from "react-native";
 import { useProducts } from "../context/ProductContext";
+import { supabase } from '../../supabaseClient';
+
+// Define Product type
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string | null;
+  [key: string]: any; // allow extra fields from Supabase
+}
 
 export default function InventoryDashboardScreen() {
-  const { products } = useProducts(); 
+  const { products: initialProducts } = useProducts(); 
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+
+  // Real-time updates from Supabase
+  useEffect(() => {
+    const channel = supabase
+      .channel('inventory-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inventory' },
+        (payload) => {
+          console.log('Inventory updated:', payload.new);
+
+          // Cast payload.new to Product
+          const updatedProduct = payload.new as Product;
+
+          // Update local state
+          setProducts(prevProducts => {
+            const index = prevProducts.findIndex(p => p.id === updatedProduct.id);
+            if (index > -1) {
+              // Update existing product
+              const updated = [...prevProducts];
+              updated[index] = { ...updated[index], ...updatedProduct };
+              return updated;
+            } else {
+              // Add new product
+              return [...prevProducts, updatedProduct];
+            }
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -28,7 +75,6 @@ export default function InventoryDashboardScreen() {
                 <Text style={styles.name}>{item.name}</Text>
                 <Text>Qty: {item.quantity}</Text>
                 <Text>Price: ₱{item.price || "0"}</Text>
-                
               </View>
             </View>
           )}

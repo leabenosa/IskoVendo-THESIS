@@ -9,10 +9,8 @@ import {
 } from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
 import { useProducts } from "../context/ProductContext";
-import uuid from "react-native-uuid";
+import { supabase } from "../../supabaseClient";
 import CustomAlert from "../components/CustomAlert";
-
-
 
 export default function AddProductScreen() {
   const { addProduct } = useProducts();
@@ -21,13 +19,13 @@ export default function AddProductScreen() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
-  const [date, setDate] = useState("");
-
+  const [lowStockThreshold, setLowStockThreshold] = useState("5");
 
   const [showAlert, setShowAlert] = useState(false);
   const [alertType, setAlertType] = useState<"error" | "success">("success");
   const [alertMessage, setAlertMessage] = useState("");
 
+  // Pick image from library
   const pickImage = async () => {
     const result = await launchImageLibrary({
       mediaType: "photo",
@@ -39,7 +37,34 @@ export default function AddProductScreen() {
     }
   };
 
-  const handleSave = () => {
+  // Upload image to Supabase storage
+  const uploadImage = async (uri: string) => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const filename = `product-${Date.now()}.jpg`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(filename, blob);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicData, error: publicError } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(filename);
+
+      if (publicError) throw publicError;
+
+      return publicData?.publicUrl || null;
+    } catch (err) {
+      console.log("Image upload error:", err);
+      return null;
+    }
+  };
+
+  // Save product handler
+  const handleSave = async () => {
     if (!name || !quantity) {
       setAlertType("error");
       setAlertMessage("Please enter at least a name and quantity.");
@@ -47,28 +72,43 @@ export default function AddProductScreen() {
       return;
     }
 
-   const newProduct = {
-  id: uuid.v4().toString(),
-  name,
-  price: Number(price) || 0,
-  quantity: Number(quantity) || 0,
-  date,
-  image,
-};
+    try {
+      // Upload image if selected
+      const imageUrl = image ? await uploadImage(image) : null;
 
+      // Insert product into 'products' table
+      const { data: productData, error: productError } = await supabase
+        .from("products")
+        .insert([{ name, price: Number(price) || 0, image: imageUrl }])
+        .select()
+        .single();
 
-    addProduct(newProduct);
+      if (productError) throw productError;
 
-    setAlertType("success");
-    setAlertMessage("Product Saved!");
-    setShowAlert(true);
+      const productId = productData.id;
 
-    // reset fields
-    setImage(null);
-    setName("");
-    setPrice("");
-    setQuantity("");
-    setDate("");
+      // ✅ Correct usage: addProduct with 3 separate arguments
+      await addProduct(
+        productId,
+        Number(quantity) || 0,
+        Number(lowStockThreshold) || 5
+      );
+
+      setAlertType("success");
+      setAlertMessage("Product saved successfully!");
+      setShowAlert(true);
+
+      // Reset form
+      setImage(null);
+      setName("");
+      setPrice("");
+      setQuantity("");
+      setLowStockThreshold("5");
+    } catch (err: any) {
+      setAlertType("error");
+      setAlertMessage(err.message || "Error saving product.");
+      setShowAlert(true);
+    }
   };
 
   return (
@@ -78,7 +118,7 @@ export default function AddProductScreen() {
         {image ? (
           <Image source={{ uri: image }} style={styles.image} />
         ) : (
-          <Text style={styles.imageText}>ADD IMAGES</Text>
+          <Text style={styles.imageText}>ADD IMAGE</Text>
         )}
       </TouchableOpacity>
 
@@ -105,28 +145,25 @@ export default function AddProductScreen() {
       />
       <TextInput
         style={styles.input}
-        placeholder="Date (e.g., 09-25-2025)"
-        value={date}
-        onChangeText={setDate}
+        placeholder="Low Stock Threshold"
+        keyboardType="numeric"
+        value={lowStockThreshold}
+        onChangeText={setLowStockThreshold}
       />
 
-     
       <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
         <Text style={styles.saveText}>✔ SAVE PRODUCT</Text>
       </TouchableOpacity>
 
-      
-     <CustomAlert
-  visible={showAlert}
-  title={alertType === "error" ? "Error" : "Success"}
-  message={alertMessage}
-  confirmText="OK"
-  confirmButtonColor={alertType === "error" ? "#ee0b0bff" : "#740c0cff"}
-  onConfirm={() => setShowAlert(false)}
-  onRequestClose={() => setShowAlert(false)}
-/>
-
-
+      <CustomAlert
+        visible={showAlert}
+        title={alertType === "error" ? "Error" : "Success"}
+        message={alertMessage}
+        confirmText="OK"
+        confirmButtonColor={alertType === "error" ? "#ee0b0bff" : "#740c0cff"}
+        onConfirm={() => setShowAlert(false)}
+        onRequestClose={() => setShowAlert(false)}
+      />
     </ScrollView>
   );
 }
@@ -180,20 +217,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 18,
   },
-  alertContainer: {
-  width: 320,
-  paddingHorizontal: 2,
-  paddingVertical: 5,
-  borderRadius: 10,
-},
-alertTitle: {
-  fontSize: 20,
-  fontWeight: "bold",
-  textAlign: "center",
-},
-alertMessage: {
-  fontSize: 16,
-  textAlign: "center",
-  marginTop: 0,
-},
 });
