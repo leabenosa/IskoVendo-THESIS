@@ -29,7 +29,9 @@ interface ProductContextType {
 }
 
 // ------------------- CONTEXT -------------------
-const ProductContext = createContext<ProductContextType | undefined>(undefined);
+export const ProductContext = createContext<ProductContextType | undefined>(
+  undefined
+);
 
 export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const [products, setProducts] = useState<InventoryItem[]>([]);
@@ -76,7 +78,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(channel); // prevent promise error in useEffect
+       supabase.removeChannel(channel); // prevent promise error in useEffect
     };
   }, []);
 

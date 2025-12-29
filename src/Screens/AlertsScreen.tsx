@@ -40,9 +40,10 @@ export default function AlertsScreen() {
   // Fetch alerts from Supabase
   const fetchAlerts = async () => {
     const { data, error } = await supabase
-      .from< Alert, Alert>('alerts') // <row type, insert type>
-      .select('*')
-      .order('timestamp', { ascending: false });
+      .from('alerts')
+.select('*')
+.order('timestamp', { ascending: false });
+
 
     if (error) {
       console.log('Error fetching alerts:', error);
