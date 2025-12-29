@@ -1,21 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, Image } from "react-native";
-import { useProducts } from "../context/ProductContext";
 import { supabase } from '../../supabaseClient';
-
-// Define Product type
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string | null;
-  [key: string]: any; // allow extra fields from Supabase
-}
+import { useProducts, InventoryItem } from './ProductContext'; // ✅ use InventoryItem
 
 export default function InventoryDashboardScreen() {
   const { products: initialProducts } = useProducts(); 
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<InventoryItem[]>(initialProducts);
+
+  // Update local state whenever context changes
+  useEffect(() => {
+    setProducts(initialProducts);
+  }, [initialProducts]);
 
   // Real-time updates from Supabase
   useEffect(() => {
@@ -27,20 +22,18 @@ export default function InventoryDashboardScreen() {
         (payload) => {
           console.log('Inventory updated:', payload.new);
 
-          // Cast payload.new to Product
-          const updatedProduct = payload.new as Product;
+          const updatedItem = payload.new as InventoryItem;
 
-          // Update local state
           setProducts(prevProducts => {
-            const index = prevProducts.findIndex(p => p.id === updatedProduct.id);
+            const index = prevProducts.findIndex(p => p.id === updatedItem.id);
             if (index > -1) {
-              // Update existing product
+              // Update existing inventory item
               const updated = [...prevProducts];
-              updated[index] = { ...updated[index], ...updatedProduct };
+              updated[index] = { ...updated[index], ...updatedItem };
               return updated;
             } else {
-              // Add new product
-              return [...prevProducts, updatedProduct];
+              // Add new inventory item
+              return [...prevProducts, updatedItem];
             }
           });
         }
@@ -64,17 +57,17 @@ export default function InventoryDashboardScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.card}>
-              {item.image ? (
-                <Image source={{ uri: item.image }} style={styles.image} />
+              {item.product?.image ? (
+                <Image source={{ uri: item.product.image }} style={styles.image} />
               ) : (
                 <View style={[styles.image, styles.noImage]}>
                   <Text>No Image</Text>
                 </View>
               )}
               <View style={styles.info}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text>Qty: {item.quantity}</Text>
-                <Text>Price: ₱{item.price || "0"}</Text>
+                <Text style={styles.name}>{item.product?.name}</Text>
+                <Text>Qty: {item.stock}</Text>
+                <Text>Price: ₱{item.product?.price || 0}</Text>
               </View>
             </View>
           )}

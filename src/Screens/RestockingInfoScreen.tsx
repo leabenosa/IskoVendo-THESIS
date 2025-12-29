@@ -1,14 +1,13 @@
-
 import React from "react";
 import { View, Text, StyleSheet, FlatList } from "react-native";
-import { useProducts } from "../context/ProductContext"; 
+import { useProducts } from "./ProductContext";
+
 
 const RestockingInfoScreen = () => {
   const { products } = useProducts();
 
-
   const lowStockItems = products.filter(
-    (item) => item.quantity < (item.threshold ?? 10)
+    (item) => item.stock < (item.low_stock_threshold ?? 10)
   );
 
   return (
@@ -23,13 +22,12 @@ const RestockingInfoScreen = () => {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text>Current Stock: {item.quantity}</Text>
-              <Text>Threshold: {item.threshold ?? 10}</Text>
+              <Text style={styles.itemName}>{item.product.name}</Text>
+              <Text>Current Stock: {item.stock}</Text>
+              <Text>Threshold: {item.low_stock_threshold ?? 10}</Text>
               <Text>
-                ⚠️ Needs Restock: {(item.threshold ?? 10) - item.quantity} units
+                ⚠️ Needs Restock: {(item.low_stock_threshold ?? 10) - item.stock} units
               </Text>
-              <Text>Last Restock Date: {item.date ?? "N/A"}</Text>
             </View>
           )}
         />
